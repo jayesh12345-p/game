@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+        canvas {
+            border: 1px solid #d3d3d3;
+            background-color: blue;
+        }
+    </style>
+
+</head>
+
+<body>
+    <p>Choose a level and start</p>
+    <button id="csb" onmouseup=startGame(1)>easy</button>
+    <button id="csb1" onmouseup=startGame(2)>medium</button>
+    <button id="csb2" onmouseup=startGame(3)>hard</button>
+
+
+    <script>
+        var difficulty;
+        var color = "red";
+        var myGamePiece;
+        var myObstacles = [];
+        var bonusgreen = []; //speedup,immune
+        var bonusyellow = []; //Hp up when touching poison, size decrease
+        var myScore;
+        var myHP;
+        var HP = 100;
+        var bonus = false;
+        var ybonus = false;
+        var finalpos = -10;
+        var finalposi = -10;
+        var interval;
+
+        function startGame(level) {
+
+            document.getElementById("csb").remove();
+            document.getElementById("csb2").remove();
+            document.getElementById("csb1").remove();
+            if (level == 1) {
+                difficulty = 160;
+            }
+            if (level == 2) {
+                difficulty = 120;
+            }
+            if (level == 3) {
+                difficulty = 80;
+            }
+            myGamePiece = new component(30, 30, color, 10, 120);
+            myGamePiece.gravity = 0.10;
+            myScore = new component("30px", "Consolas", "black", 280, 40, "text");
+            myHP = new component("20px", "Consolas", "orange", 100, 40, "text");
+            myGameArea.start();
+        }
+
+        var myGameArea = {
+            canvas: document.createElement("canvas"),
+            start: function() {
+                clearInterval(this.interval);
+                this.canvas.width = 480;
+                this.canvas.height = 270;
+                this.context = this.canvas.getContext("2d");
+                document.body.insertBefore(this.canvas, document.body.childNodes[0]);
+                this.frameNo = 0;
+                this.interval = setInterval(updateGameArea, 10);
+
+
+            },
+            clear: function() {
+                this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+            }
+        }
+
+        function component(width, height, color, x, y, type) {
+            this.color = color;
+            this.type = type;
+            this.score = 0;
+            this.HP = 1;
+            this.width = width;
+            this.height = height;
+            this.speedX = 0;
+            this.speedY = 0;
+            this.x = x;
+            this.y = y;
+            this.gravity = 0;
+            this.gravitySpeed = 0;
+            this.update = function() {
+                ctx = myGameArea.context;
+
+                if (this.type == "text") {
+                    ctx.font = this.width + " " + this.height;
+                    ctx.fillStyle = color;
+                    ctx.fillText(this.text, this.x, this.y);
+                } else {
+                    if (ybonus & this.color != "green" & this.color != "black") {
+                        this.width = 10;
+                        this.height = 10;
+                        ctx.fillStyle = "yellow";
+                        ctx.fillRect(this.x, this.y, this.width, this.height);
+                    } else if (bonus & this.color != "green" & this.color != "black" & this.color != "yellow") {
+                        this.width = 30;
+                        this.height = 30;
+                        ctx.fillStyle = "grey";
+                        ctx.fillRect(this.x, this.y, this.width, this.height);
+                    } else if (this.color != "green" & this.color != "black" & this.color != "yellow") {
+                        this.width = 30;
+                        this.height = 30;
+                        ctx.fillStyle = color;
+                        ctx.fillRect(this.x, this.y, this.width, this.height);
+                    } else {
+                        ctx.fillStyle = color;
+                        ctx.fillRect(this.x, this.y, this.width, this.height);
+                    }
+                }
+            }
+
+            this.newPos = function() {
+                this.gravitySpeed += this.gravity;
+                this.x += this.speedX;
+                this.y += this.speedY + this.gravitySpeed;
+                this.hitBottom();
+                this.hitTop();
+            }
+            this.hitBottom = function() {
+                var rockbottom = myGameArea.canvas.height - this.height;
+                if (this.y > rockbottom) {
+                    this.y = rockbottom;
+                    this.gravitySpeed = 0;
+                }
+            }
+
+            this.hitTop = function() {
+                if (this.y < 0 & this.gravitySpeed < 0) {
+                    this.y = 0;
+                    this.gravitySpeed = 0;
+                }
+            }
+
+            this.crashWith = function(otherobj) {
+                var myleft = this.x;
+                var myright = this.x + (this.width);
+                var mytop = this.y;
+                var mybottom = this.y + (this.height);
+                var otherleft = otherobj.x;
+                var otherright = otherobj.x + (otherobj.width);
+                var othertop = otherobj.y;
+                var otherbottom = otherobj.y + (otherobj.height);
+                var crash = true;
+                if ((mybottom < othertop) || (mytop > otherbottom) || (myright < otherleft) || (myleft > otherright)) {
+                    crash = false;
+                }
+                return crash;
+            }
+        }
+
+        function updateGameArea() {
+            var x, height, gap, minHeight, maxHeight, minGap, maxGap;
+
+            if (finalpos + 20 < myGameArea.frameNo || bonus == false) {
+                bonus = false;
+                clearInterval(this.interval);
+                this.interval = setInterval(updateGameArea, 10);
+                myGamePiece.update();
+            }
+            if (finalposi < myGameArea.frameNo) {
+                ybonus = false;
+                myGamePiece.update();
+            }
+            for (i = 0; i < myObstacles.length; i += 1) {
+                if (myGamePiece.crashWith(myObstacles[i]) && bonus == false) {
+                    this.HP -= 1;
+
+                    if (this.HP <= -1)
+
+                        return;
+
+                }
+            }
+            for (i = 0; i < bonusgreen.length; i += 1) {
+                if (myGamePiece.crashWith(bonusgreen[i])) {
+                    myGamePiece.update();
+                    finalpos = myGameArea.frameNo + 400;
+                    if (finalpos > myGameArea.frameNo) {
+                        bonus = true;
+                        ybonus = false;
+                        clearInterval(this.interval);
+                        this.interval = setInterval(updateGameArea, 2);
+                    } else if (finalpos + 20 > myGameArea.frameNo) {
+                        bonus = true;
+                    }
+                }
+            }
+            for (i = 0; i < bonusyellow.length; i += 1) {
+                if (myGamePiece.crashWith(bonusyellow[i])) {
+                    myGamePiece.update();
+                    finalposi = myGameArea.frameNo + 400;
+                    if (finalposi > myGameArea.frameNo) {
+                        ybonus = true;
+                        bonus = false;
+                        HP += 1;
+                    }
+
+                }
+            }
+            myGameArea.clear();
+            myGameArea.frameNo += 1;
+            if (myGameArea.frameNo == 1 || everyinterval(difficulty)) {
+                x = myGameArea.canvas.width;
+                minHeight = 20;
+                maxHeight = 200;
+                height = Math.floor(Math.random() * (maxHeight - minHeight + 1) + minHeight);
+                minGap = 50;
+                maxGap = 200;
+                gap = Math.floor(Math.random() * (maxGap - minGap + 1) + minGap);
+                myObstacles.push(new component(10, height, "green", x, 0));
+                myObstacles.push(new component(10, x - height - gap, "green", x, height + gap));
+            }
+            if (myGameArea.frameNo == 10 || everyinterval(320 + Math.floor(Math.random() * 70))) {
+                if (Math.random() < 0.5) {
+                    x = myGameArea.canvas.width;
+                    bonusgreen.push(new component(10, 10, "black", x, Math.floor(Math.random() * 270)))
+                } else if (Math.random() > 0.8) {
+                    x = myGameArea.canvas.width;
+                    bonusyellow.push(new component(10, 10, "yellow", x, Math.floor(Math.random() * 270)))
+                }
+            }
+            if (everyinterval(1500)) {
+                HP += 50;
+            }
+            for (i = 0; i < myObstacles.length; i += 1) {
+                myObstacles[i].x += -1;
+                myObstacles[i].update();
+            }
+            for (i = 0; i < bonusgreen.length; i += 1) {
+                bonusgreen[i].x += -1;
+                bonusgreen[i].update();
+            }
+            for (i = 0; i < bonusyellow.length; i += 1) {
+                bonusyellow[i].x += -1;
+                bonusyellow[i].update();
+            }
+            myScore.text = "SCORE: " + myGameArea.frameNo;
+            myScore.update();
+            myHP.text = "HP: " + this.HP;
+            myHP.update();
+            myGamePiece.newPos();
+            myGamePiece.update();
+        }
+
+        function everyinterval(n) {
+            if ((myGameArea.frameNo / n) % 1 == 0) {
+                return true;
+            }
+            return false;
+        }
+
+        function accelerate(n) {
+            myGamePiece.gravity = n;
+        }
+    </script>
+    <br>
+    <button onmousedown="accelerate(-0.2)" onmouseup="accelerate(0.05)">ACCELERATE</button>
+    <button onmousedown="accelerate(1.0)">DECELERATE</button>
+    <button onmouseup="location.reload()">restart</button>
+    <p>Use the ACCELERATE button to stay in the air, you will lose hitpoint if you touch the poison green.</p>
+    <p>black and yellow zone can give you additional bonus score or hitpoint. You can only gain one bonus at a time.</p>
+    <p>You will get additional 50 hitpoint for every 1500 points/</p>
+    <p>Try to score as high as possible</p>
+    <!-- <embed src="http://docs.google.com/uc?export=open&id=17qV9zuuA33EHKwIsTSSJ6DT5t2jGB8M-" type="audio/mp3" autostart="true" hidden="true">
+    <audio id="csbdaddy" controls autoplay loop>
+    <source src="http://docs.google.com/uc?export=open&id=17qV9zuuA33EHKwIsTSSJ6DT5t2jGB8M-" type="audio/mp3">
+</audio> -->
+
+</body>
+
+</html>
